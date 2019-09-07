@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "lib": [
+      "es5",
+      "ScriptHost",
+      "dom",
+      "es2015.iterable",
+      "es2015.generator",
+      "es2015.promise",
+      "es2015.symbol",
+      "es2015.collection"
+    ],
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": false,
+    "forceConsistentCasingInFileNames": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "downlevelIteration": true,
+    "jsx": "react",
+    "sourceMap": true
+  },
+  "files": [
+    "index.ts"
+  ]
+}

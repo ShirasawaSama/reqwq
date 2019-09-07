@@ -1,0 +1,45 @@
+{
+  "name": "use-model",
+  "version": "0.1.0",
+  "description": "Lightweight global state manager of React hooks based on Immer.",
+  "main": "index.js",
+  "scripts": {
+    "start": "parcel index.html",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShirasawaSama/use-model.git"
+  },
+  "keywords": [
+    "react",
+    "hooks",
+    "immer",
+    "state",
+    "global"
+  ],
+  "author": "Shirasawa",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ShirasawaSama/use-model/issues"
+  },
+  "homepage": "https://github.com/ShirasawaSama/use-model#readme",
+  "devDependencies": {
+    "@types/react-dom": "^16.9.0",
+    "parcel": "^1.12.3",
+    "react": "^16.9.0",
+    "react-dom": "^16.9.0",
+    "ts-node": "^8.3.0",
+    "tslint": "^5.19.0",
+    "tslint-config-standard": "^8.0.1",
+    "tslint-react": "^4.0.0",
+    "typescript": "^3.6.2"
+  },
+  "dependencies": {
+    "@types/react": "^16.9.2",
+    "immer": "^3.2.0"
+  },
+  "peerDependencies": {
+    "react": "^16.9.0"
+  }
+}
