@@ -2,28 +2,37 @@ import { createDraft, finishDraft, immerable } from 'immer/src/index'
 import { DRAFT_STATE, assign, shallowCopy } from 'immer/src/common'
 import React, { createContext, useState, useContext, createElement as c } from 'react'
 
-export const useModel = <T extends typeof Model> (model: T) => {
+export const useModel = <T extends typeof Model, I = InstanceType<T>> (model: T) => {
   const m = useContext(G)
   const ctx = m.contexts[m.ids.get(model)]
-  if (!ctx) throw new Error('No such model: ' + model)
-  return useContext(ctx) as InstanceType<T>
+  if (!ctx) throw new Error('No such model: ' + /* istanbul ignore next */ (model && ((model as any).name || model)))
+  return useContext(ctx) as any as { [key in keyof(I)]: I[key] extends (...args: any[]) => any ? Func<I[key]> : I[key] }
 }
 
-export class Model { public getModel: <M extends typeof Model> (model: M) => InstanceType<M> }
+export type ExtractType<T> =
+  T extends { [Symbol.iterator] (): { next (): { done: true, value: infer U } } } ? U :
+  T extends { [Symbol.iterator] (): { next (): { done: false } } } ? never :
+  T extends { [Symbol.iterator] (): { next (): { value: infer U } } } ? U :
+  T extends { [Symbol.iterator] (): any } ? any : never
+export type Func <I extends (...args: any[]) => IterableIterator<any> | any> = I extends (...args: infer P) =>
+  IterableIterator<infer R> ? (...args: P) => R extends Promise<any> ? R : Promise<ExtractType<R>> : I
+export type GetModel = <M extends typeof Model, I = InstanceType<M>> (model: M) =>
+  () => { [key in keyof(I)]: I[key] extends (...args: any[]) => any ? Func<I[key]> : I[key] }
+export class Model { public readonly getModel: GetModel }
 Model[immerable] = true
 function V (v: any) { this.value = v }
 const G = createContext(null as { ids: Map<typeof Model, number>, contexts: Array<React.Context<Model>> })
 
-export const getProvider: (...models: Array<Model | typeof Model>) => React.FC = function () {
+export const getProvider: (...models: Array<Model | typeof Model>) => React.FC & { getModel: GetModel } = function () {
   let update: (data: boolean) => void = null
   let flag = false
   const ids = new Map<typeof Model, number>()
   const models: Model[] = []
   const contexts: Array<React.Context<Model>> = []
   const value = new V({ ids, contexts })
-  const getModel = <M extends typeof Model> (model: M) => {
+  const getModel = <M extends typeof Model> (model: M) => () => {
     const v = models[ids.get(model)]
-    if (!v) throw new Error('No such model: ' + model)
+    if (!v) throw new Error('No such model: ' + /* istanbul ignore next */ (model && ((model as any).name || model)))
     return v as InstanceType<M>
   }
   let j = arguments.length
@@ -34,7 +43,10 @@ export const getProvider: (...models: Array<Model | typeof Model>) => React.FC =
     let i = 0
     const proto = Object.getPrototypeOf(model)
     const modelClass = proto.constructor as typeof Model
-    if (ids.has(modelClass)) throw new Error('The model already exists: ' + modelClass)
+    if (ids.has(modelClass)) {
+      /* istanbul ignore next */
+      throw new Error('The model already exists: ' + ((modelClass as any).name || modelClass))
+    }
     Object.getOwnPropertyNames(proto).forEach(name => {
       const f = src[name]
       if (name !== 'constructor' && typeof f === 'function') {
@@ -44,27 +56,43 @@ export const getProvider: (...models: Array<Model | typeof Model>) => React.FC =
           let result: any
           try {
             result = f.apply(model, arguments)
-            if (i === 1 && typeof result.next === 'function') {
+            if (result && i === 1 && typeof result.next === 'function') {
               i = Infinity
+              const gen = result
+              let ree: (arg: any) => void
+              let rej: (arg: Error) => void
+              result = new Promise((resolve, reject) => {
+                ree = resolve
+                rej = reject
+              })
               ;(function next (res?: any) {
-                const { value: v, done } = result.next(res)
+                let { value: v, done } = gen.next(res) /* tslint:disable-line */
                 const s = model[DRAFT_STATE]
                 const modified = s.modified
                 if (done) {
                   i = 0
                   models[ids.get(modelClass)] = model = finishDraft(model)
                   if (modified) update(!flag)
+                  ree(v)
                 } else {
                   if (modified) {
                     s.copy = s.base = assign(shallowCopy(models[ids.get(modelClass)] = s.copy), s.drafts)
                     update(!flag)
                   }
-                  if (!v || typeof v.then !== 'function') {
+                  if (Array.isArray(v)) v = Promise.all(v)
+                  if (v && typeof v.then === 'function') {
+                    v.then(next, (e: any) => {
+                      try { gen.throw(e) } catch (o) {
+                        i = 0
+                        rej(e)
+                      }
+                    })
+                  } else {
                     try { next(v) } catch (e) {
                       i = 0
-                      throw e
+                      rej(e)
                     }
-                  } else (Array.isArray(v) ? Promise.all(v) : v).then(next, (e: any) => result.throw(e))
+                  }
                 }
               })()
             } else i--
@@ -86,10 +114,12 @@ export const getProvider: (...models: Array<Model | typeof Model>) => React.FC =
     ids.set(modelClass, models.push(model) - 1)
     contexts.push(createContext(null as Model))
   }
-  return ((props: React.PropsWithChildren<{}>) => {
+  const ret = (props: React.PropsWithChildren<{}>) => {
     const v = useState(flag)
     flag = v[0]
     update = v[1]
     return c(G.Provider, value, contexts.reduceRight((p, t, i) => c(t.Provider, new V(models[i]), p), props.children))
-  }) as any
+  }
+  ret.getModel = getModel
+  return ret as any
 }

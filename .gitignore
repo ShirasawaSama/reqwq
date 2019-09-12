@@ -3,3 +3,6 @@ node_modules
 dist
 *.js
 *.map
+coverage
+.nyc_output
+index.d.ts

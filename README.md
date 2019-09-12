@@ -1,4 +1,4 @@
-# use-model
+# use-model [![JavaScript Style Guide](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](http://standardjs.com/) [![Build Status](https://travis-ci.org/ShirasawaSama/use-model.svg?branch=master)](https://travis-ci.org/ShirasawaSama/use-model) [![codecov](https://codecov.io/gh/ShirasawaSama/use-model/branch/master/graph/badge.svg)](https://codecov.io/gh/ShirasawaSama/use-model) [![GitHub stars](https://img.shields.io/github/stars/ShirasawaSama/use-model.svg?style=social&label=Stars)](https://github.com/ShirasawaSama/use-model)
 
 Lightweight global state manager of React hooks based on [Immer](https://github.com/immerjs/immer).
 
@@ -10,7 +10,7 @@ Currently not pushed to npmjs.
 
 ## Usage
 
-### Defined A Model
+### Defined a model
 
 CounterModel.ts:
 
@@ -94,7 +94,7 @@ AnotherModel.ts:
 ```ts
 import { Model } from 'use-model'
 
-export default class CounterModel extends Model {
+export default class AnotherModel extends Model {
   public messages = ['hello']
   public world () { this.messages.push('world!') }
 }
