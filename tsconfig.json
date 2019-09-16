@@ -8,7 +8,8 @@
     "moduleResolution": "node",
     "jsx": "react",
     "sourceMap": true,
-    "declaration": true
+    "declaration": true,
+    "noEmit": true
   },
   "files": [
     "index.ts"
