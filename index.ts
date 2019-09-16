@@ -23,7 +23,8 @@ Model[immerable] = true
 function V (v: any) { this.value = v }
 const G = createContext(null as { ids: Map<typeof Model, number>, contexts: Array<React.Context<Model>> })
 
-export const getProvider: (...models: Array<Model | typeof Model>) => React.FC & { getModel: GetModel } = function () {
+type Ret = React.FC & { getModel: GetModel, addModels: (...models: Array<Model | typeof Model>) => void }
+export const getProvider: (...models: Array<Model | typeof Model>) => Ret = function () {
   let update: (data: boolean) => void = null
   let flag = false
   const ids = new Map<typeof Model, number>()
@@ -35,85 +36,89 @@ export const getProvider: (...models: Array<Model | typeof Model>) => React.FC &
     if (!v) throw new Error('No such model: ' + /* istanbul ignore next */ (model && ((model as any).name || model)))
     return v as InstanceType<M>
   }
-  let j = arguments.length
-  while (j--) {
-    const it = arguments[j]
-    const src = it instanceof Model ? it : new it()
-    let model = src
-    let i = 0
-    const proto = Object.getPrototypeOf(model)
-    const modelClass = proto.constructor as typeof Model
-    if (ids.has(modelClass)) {
-      /* istanbul ignore next */
-      throw new Error('The model already exists: ' + ((modelClass as any).name || modelClass))
-    }
-    Object.getOwnPropertyNames(proto).forEach(name => {
-      const f = src[name]
-      if (name !== 'constructor' && typeof f === 'function') {
-        src[name] = function () {
-          if (i === 0) model = createDraft(model)
-          i++
-          let result: any
-          try {
-            result = f.apply(model, arguments)
-            if (result && i === 1 && typeof result.next === 'function') {
-              i = Infinity
-              const gen = result
-              let ree: (arg: any) => void
-              let rej: (arg: Error) => void
-              result = new Promise((resolve, reject) => {
-                ree = resolve
-                rej = reject
-              })
-              ;(function next (res?: any) {
-                let { value: v, done } = gen.next(res) /* tslint:disable-line */
-                const s = model[DRAFT_STATE]
-                const modified = s.modified
-                if (done) {
-                  i = 0
-                  models[ids.get(modelClass)] = model = finishDraft(model)
-                  if (modified) update(!flag)
-                  ree(v)
-                } else {
-                  if (modified) {
-                    s.copy = s.base = assign(shallowCopy(models[ids.get(modelClass)] = s.copy), s.drafts)
-                    update(!flag)
-                  }
-                  if (Array.isArray(v)) v = Promise.all(v)
-                  if (v && typeof v.then === 'function') {
-                    v.then(next, (e: any) => {
-                      try { gen.throw(e) } catch (o) {
+  function addModel () {
+    let j = arguments.length
+    while (j--) {
+      const it = arguments[j]
+      const src = it instanceof Model ? it : new it()
+      let model = src
+      let i = 0
+      const proto = Object.getPrototypeOf(model)
+      const modelClass = proto.constructor as typeof Model
+      if (ids.has(modelClass)) {
+        /* istanbul ignore next */
+        throw new Error('The model already exists: ' + ((modelClass as any).name || modelClass))
+      }
+      Object.getOwnPropertyNames(proto).forEach(name => {
+        const f = src[name]
+        if (name !== 'constructor' && typeof f === 'function') {
+          src[name] = function () {
+            if (i === 0) model = createDraft(model)
+            i++
+            let result: any
+            try {
+              result = f.apply(model, arguments)
+              if (result && i === 1 && typeof result.next === 'function') {
+                i = Infinity
+                const gen = result
+                let ree: (arg: any) => void
+                let rej: (arg: Error) => void
+                result = new Promise((resolve, reject) => {
+                  ree = resolve
+                  rej = reject
+                })
+                ;(function next (res?: any) {
+                  let { value: v, done } = gen.next(res) /* tslint:disable-line */
+                  const s = model[DRAFT_STATE]
+                  const modified = s.modified
+                  if (done) {
+                    i = 0
+                    models[ids.get(modelClass)] = model = finishDraft(model)
+                    if (modified) update(!flag)
+                    ree(v)
+                  } else {
+                    if (modified) {
+                      s.copy = s.base = assign(shallowCopy(models[ids.get(modelClass)] = s.copy), s.drafts)
+                      update(!flag)
+                    }
+                    if (Array.isArray(v)) v = Promise.all(v)
+                    if (v && typeof v.then === 'function') {
+                      v.then(next, (e: any) => {
+                        try { gen.throw(e) } catch (o) {
+                          i = 0
+                          rej(e)
+                        }
+                      })
+                    } else {
+                      try { next(v) } catch (e) {
                         i = 0
                         rej(e)
                       }
-                    })
-                  } else {
-                    try { next(v) } catch (e) {
-                      i = 0
-                      rej(e)
                     }
                   }
-                }
-              })()
-            } else i--
-          } catch (e) {
-            i = 0
-            throw e
-          } finally {
-            if (i === 0 && model[DRAFT_STATE].revoke) {
-              const modified = model[DRAFT_STATE].modified
-              models[ids.get(modelClass)] = model = finishDraft(model)
-              if (modified) update(!flag)
+                })()
+              } else i--
+            } catch (e) {
+              i = 0
+              throw e
+            } finally {
+              if (i === 0 && model[DRAFT_STATE] && model[DRAFT_STATE].revoke) {
+                const modified = model[DRAFT_STATE].modified
+                models[ids.get(modelClass)] = model = finishDraft(model)
+                if (modified) update(!flag)
+              }
             }
+            return result
           }
-          return result
         }
-      }
-    })
-    model.getModel = getModel
-    ids.set(modelClass, models.push(model) - 1)
-    contexts.push(createContext(null as Model))
+      })
+      model.getModel = getModel
+      ids.set(modelClass, models.push(model) - 1)
+      contexts.push(createContext(null as Model))
+    }
+    if (update) update(!flag)
   }
+  addModel.apply(null, arguments)
   const ret = (props: React.PropsWithChildren<{}>) => {
     const v = useState(flag)
     flag = v[0]
@@ -121,5 +126,6 @@ export const getProvider: (...models: Array<Model | typeof Model>) => React.FC &
     return c(G.Provider, value, contexts.reduceRight((p, t, i) => c(t.Provider, new V(models[i]), p), props.children))
   }
   ret.getModel = getModel
+  ret.addModels = addModel
   return ret as any
 }

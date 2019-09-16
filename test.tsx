@@ -76,4 +76,7 @@ test('basic', async t => {
     return <>{m.i}</>
   }
   t.true(mount(<P><C /></P>).html().includes('hello'), 'new model')
+
+  P.addModels(UnRegistered)
+  t.true(P.getModel(UnRegistered)().i === 'ahh', 'addModels')
 })
