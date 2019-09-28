@@ -2,6 +2,9 @@ import { createDraft, finishDraft, immerable } from 'immer/src/index'
 import { DRAFT_STATE, assign, shallowCopy } from 'immer/src/common'
 import React, { createContext, useState, useContext, createElement as c } from 'react'
 
+const MODELS: unique symbol = (typeof Symbol === 'undefined'
+  ? /* istanbul ignore next */ { models: true } : Symbol('models')) as any
+
 export const useModel = <T extends typeof Model, I = InstanceType<T>> (model: T) => {
   const m = useContext(G)
   const ctx = m.contexts[m.ids.get(model)]
@@ -18,7 +21,10 @@ export type Func <I extends (...args: any[]) => IterableIterator<any> | any> = I
   IterableIterator<infer R> ? (...args: P) => R extends Promise<any> ? R : Promise<ExtractType<R>> : I
 export type GetModel = <M extends typeof Model, I = InstanceType<M>> (model: M) =>
   () => { [key in keyof(I)]: I[key] extends (...args: any[]) => any ? Func<I[key]> : I[key] }
-export class Model { public readonly getModel: GetModel }
+export class Model {
+  public [MODELS]: GetModel
+  public getModel <M extends typeof Model> (model: M) { return () => this[MODELS](model)() }
+}
 Model[immerable] = true
 function V (v: any) { this.value = v }
 const G = createContext(null as { ids: Map<typeof Model, number>, contexts: Array<React.Context<Model>> })
@@ -51,7 +57,7 @@ export const getProvider: (...models: Array<Model | typeof Model>) => Ret = func
       }
       Object.getOwnPropertyNames(proto).forEach(name => {
         const f = src[name]
-        if (name !== 'constructor' && typeof f === 'function') {
+        if (name !== 'constructor' && name !== 'getModel' && typeof f === 'function') {
           src[name] = function () {
             if (i === 0) model = createDraft(model)
             i++
@@ -112,7 +118,7 @@ export const getProvider: (...models: Array<Model | typeof Model>) => Ret = func
           }
         }
       })
-      model.getModel = getModel
+      model.getModel = model[MODELS] = getModel
       ids.set(modelClass, models.push(model) - 1)
       contexts.push(createContext(null as Model))
     }

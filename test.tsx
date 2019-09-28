@@ -69,7 +69,11 @@ test('basic', async t => {
   t.throws(() => Provider.getModel(UnRegistered)(), null, 'unregistered2')
   t.throws(() => getProvider(M, M), null, 'repeat register')
 
-  class M2 extends Model { constructor (public i: string = 'bug') { super() } }
+  class M2 extends Model {
+    private model = this.getModel(UnRegistered)
+    constructor (public i: string = 'bug') { super() }
+    public fn () { return this.model().i }
+  }
   const P = getProvider(new M2('hello'))
   const C: React.FC = () => {
     const m = useModel(M2)
@@ -79,4 +83,5 @@ test('basic', async t => {
 
   P.addModels(UnRegistered)
   t.true(P.getModel(UnRegistered)().i === 'ahh', 'addModels')
+  t.true(P.getModel(M2)().fn() === 'ahh', 'getModel')
 })
