@@ -22,8 +22,8 @@ export type Func <I extends (...args: any[]) => IterableIterator<any> | any> = I
 export type GetModel = <M extends typeof Model, I = InstanceType<M>> (model: M) =>
   () => { [key in keyof(I)]: I[key] extends (...args: any[]) => any ? Func<I[key]> : I[key] }
 export class Model {
-  public [MODELS]: GetModel
-  public getModel <M extends typeof Model> (model: M) { return () => this[MODELS](model)() }
+  public getModel <M extends typeof Model, I = InstanceType<M>> (model: M): () => { [key in keyof(I)]:
+    I[key] extends (...args: any[]) => any ? Func<I[key]> : I[key] } { return () => this[MODELS](model)() }
 }
 Model[immerable] = true
 function V (v: any) { this.value = v }
