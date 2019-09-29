@@ -21,10 +21,7 @@ export type Func <I extends (...args: any[]) => IterableIterator<any> | any> = I
   IterableIterator<infer R> ? (...args: P) => R extends Promise<any> ? R : Promise<ExtractType<R>> : I
 export type GetModel = <M extends typeof Model, I = InstanceType<M>> (model: M) =>
   () => { [key in keyof(I)]: I[key] extends (...args: any[]) => any ? Func<I[key]> : I[key] }
-export class Model {
-  public getModel <M extends typeof Model, I = InstanceType<M>> (model: M): () => { [key in keyof(I)]:
-    I[key] extends (...args: any[]) => any ? Func<I[key]> : I[key] } { return () => this[MODELS](model)() }
-}
+export class Model { public getModel: GetModel = (model: any) => () => this[MODELS](model)() }
 Model[immerable] = true
 function V (v: any) { this.value = v }
 const G = createContext(null as { ids: Map<typeof Model, number>, contexts: Array<React.Context<Model>> })
