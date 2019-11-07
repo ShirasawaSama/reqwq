@@ -4,12 +4,13 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "module": "esnext",
     "moduleResolution": "node",
     "jsx": "react",
     "sourceMap": true,
-    "declaration": true,
-    "noEmit": true
+    "declaration": true
   },
   "files": [
     "index.ts"

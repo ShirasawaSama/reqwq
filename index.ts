@@ -1,134 +1,155 @@
-import { createDraft, finishDraft, immerable } from 'immer/src/index'
-import { DRAFT_STATE, assign, shallowCopy } from 'immer/src/common'
-import React, { createContext, useState, useContext, createElement as c } from 'react'
+import React, { createContext, useState, useContext, Context, createElement as c, Component, PureComponent } from 'react'
 
-const MODELS: unique symbol = (typeof Symbol === 'undefined'
-  ? /* istanbul ignore next */ { models: true } : Symbol('models')) as any
-
-export const useModel = <T extends typeof Model, I = InstanceType<T>> (model: T) => {
-  const m = useContext(G)
-  const ctx = m.contexts[m.ids.get(model)]
-  if (!ctx) throw new Error('No such model: ' + /* istanbul ignore next */ (model && ((model as any).name || model)))
-  return useContext(ctx) as any as { [key in keyof(I)]: I[key] extends (...args: any[]) => any ? Func<I[key]> : I[key] }
+export type GetStore = <M extends typeof Store> (store: M) => InstanceType<M>
+export class Store {
+  public getStore: GetStore = () => { throw new Error('Initialization is not complete yet.') }
 }
 
-export type ExtractType<T> =
-  T extends { [Symbol.iterator] (): { next (): { done: true, value: infer U } } } ? U :
-  T extends { [Symbol.iterator] (): { next (): { done: false } } } ? never :
-  T extends { [Symbol.iterator] (): { next (): { value: infer U } } } ? U :
-  T extends { [Symbol.iterator] (): any } ? any : never
-export type Func <I extends (...args: any[]) => IterableIterator<any> | any> = I extends (...args: infer P) =>
-  IterableIterator<infer R> ? (...args: P) => R extends Promise<any> ? R : Promise<ExtractType<R>> : I
-export type GetModel = <M extends typeof Model, I = InstanceType<M>> (model: M) =>
-  () => { [key in keyof(I)]: I[key] extends (...args: any[]) => any ? Func<I[key]> : I[key] }
-export class Model { public getModel: GetModel = (model: any) => () => this[MODELS](model)() }
-Model[immerable] = true
-function V (v: any) { this.value = v }
-const G = createContext(null as { ids: Map<typeof Model, number>, contexts: Array<React.Context<Model>> })
+const STORE = Symbol('Store')
+const PROXY = Symbol('Proxy')
+const PARENT = Symbol('Parent')
+const ROOT = Symbol('Root')
+const KEY = Symbol('Key')
+const BASE = Symbol('Base')
 
-type Ret = React.FC & { getModel: GetModel, addModels: (...models: Array<Model | typeof Model>) => void }
-export const getProvider: (...models: Array<Model | typeof Model>) => Ret = function () {
-  let update: (data: boolean) => void = null
-  let flag = false
-  const ids = new Map<typeof Model, number>()
-  const models: Model[] = []
-  const contexts: Array<React.Context<Model>> = []
-  const value = new V({ ids, contexts })
-  const getModel = <M extends typeof Model> (model: M) => () => {
-    const v = models[ids.get(model)]
-    if (!v) throw new Error('No such model: ' + /* istanbul ignore next */ (model && ((model as any).name || model)))
-    return v as InstanceType<M>
-  }
-  function addModel () {
-    let j = arguments.length
-    while (j--) {
-      const it = arguments[j]
-      const src = it instanceof Model ? it : new it()
-      let model = src
-      let i = 0
-      const proto = Object.getPrototypeOf(model)
-      const modelClass = proto.constructor as typeof Model
-      if (ids.has(modelClass)) {
-        /* istanbul ignore next */
-        throw new Error('The model already exists: ' + ((modelClass as any).name || modelClass))
+interface Ctx { ids: Map<typeof Store, number>, contexts: Array<Context<null>>, stores: Store[] }
+const G = createContext(null as Ctx)
+
+let _getStore
+const TEXT = 'Initialization is not complete yet.'
+export const getStore = <T extends typeof Store> (store: T) => (_getStore && _getStore(store)) || new Proxy({}, {
+  get (_, key) { if (key === STORE) return store; else throw new Error(TEXT) },
+  set () { throw new Error(TEXT) }
+}) as InstanceType<T>
+export const injectStore = <T extends typeof Store> (store: T) => (t: any, key: string) => (t[key] = getStore(store))
+export const withStores = <T extends { [key: string]: typeof Store }> (stores = { } as T,
+  mapping?: (t: { [key in keyof T]: InstanceType<T[key]> }) => any) =>
+  (C: typeof Component) => {
+    const F: React.FC = props => {
+      const ctx = useContext(G)
+      const obj: any = { }
+      for (const i in stores) {
+        const id = ctx.ids.get(stores[i])
+        useContext(ctx.contexts[id])
+        obj[i] = ctx.stores[id]
       }
-      Object.getOwnPropertyNames(proto).forEach(name => {
-        const f = src[name]
-        if (name !== 'constructor' && name !== 'getModel' && typeof f === 'function') {
-          src[name] = function () {
-            if (i === 0) model = createDraft(model)
-            i++
-            let result: any
-            try {
-              result = f.apply(model, arguments)
-              if (result && i === 1 && typeof result.next === 'function') {
-                i = Infinity
-                const gen = result
-                let ree: (arg: any) => void
-                let rej: (arg: Error) => void
-                result = new Promise((resolve, reject) => {
-                  ree = resolve
-                  rej = reject
-                })
-                ;(function next (res?: any) {
-                  let { value: v, done } = gen.next(res) /* tslint:disable-line */
-                  const s = model[DRAFT_STATE]
-                  const modified = s.modified
-                  if (done) {
-                    i = 0
-                    models[ids.get(modelClass)] = model = finishDraft(model)
-                    if (modified) update(!flag)
-                    ree(v)
-                  } else {
-                    if (modified) {
-                      s.copy = s.base = assign(shallowCopy(models[ids.get(modelClass)] = s.copy), s.drafts)
-                      update(!flag)
-                    }
-                    if (Array.isArray(v)) v = Promise.all(v)
-                    if (v && typeof v.then === 'function') {
-                      v.then(next, (e: any) => {
-                        try { gen.throw(e) } catch (o) {
-                          i = 0
-                          rej(e)
-                        }
-                      })
-                    } else {
-                      try { next(v) } catch (e) {
-                        i = 0
-                        rej(e)
-                      }
-                    }
-                  }
-                })()
-              } else i--
-            } catch (e) {
-              i = 0
-              throw e
-            } finally {
-              if (i === 0 && model[DRAFT_STATE] && model[DRAFT_STATE].revoke) {
-                const modified = model[DRAFT_STATE].modified
-                models[ids.get(modelClass)] = model = finishDraft(model)
-                if (modified) update(!flag)
-              }
-            }
-            return result
+      return c(C, Object.assign((mapping && mapping(obj)) || obj), props)
+    }
+    return class extends PureComponent {
+      public render () {
+        return c(F, this.props as any)
+      }
+    }
+  }
+export const useStore = <T extends typeof Store> (store: T) => {
+  const m = useContext(G)
+  const id = m.ids.get(store)
+  const ctx = m.contexts[id]
+  if (!ctx) throw new Error('No such store: ' + /* istanbul ignore next */ (store && ((store as any).name || store)))
+  useContext(ctx)
+  return m.stores[id] as InstanceType<T>
+}
+function V (v: any) { this.value = v }
+
+export const create: (...stores: Array<Store | typeof Store>) => React.FC & { getStore: GetStore, patch: () => void,
+  addStores: (...stores: Array<Store | typeof Store>) => void } = function () {
+    let update: (data: boolean) => void = null
+    let flag = false
+    const ids = new WeakMap<typeof Store, number>()
+    const stores: Store[] = []
+    const contexts: Array<React.Context<null>> = []
+    const value = new V({ ids, contexts, stores })
+    const flags: boolean[] = []
+    let modified = false
+    let modifiedList = { }
+    const updates = new Set()
+    const patch = () => {
+      if (!modified || updates.size === 0) return
+      updates.forEach(u => {
+        const parent = u[PARENT]
+        if (!parent) return
+        const k = u[KEY]
+        const curV = parent[k]
+        parent[PROXY][k] = undefined
+        parent[k] = Array.isArray(curV) ? curV.slice() : Object.assign(new Object(), curV)
+      })
+      for (const id in modifiedList) flags[id] = !flags[id]
+      modifiedList = {}
+      updates.clear()
+      modified = false
+      if (update) update(!flag)
+    }
+    const handlers: ProxyHandler<any> = {
+      get (target, p, r) {
+        if (p === PROXY) return target[PROXY]
+        if (typeof target[PROXY][p] !== 'undefined') return target[PROXY][p]
+        const v = Reflect.get(target, p, r)
+        if (p === 'toJSON') return v || (() => target)
+        switch (typeof v) {
+          case 'object': return (target[PROXY][p] = proxy(Reflect.get(target, p, r), target[ROOT], target, p))
+          case 'function': return target[BASE] ? (target[PROXY][p] = v.bind(target[BASE])) : v
+          default: return v
+        }
+      },
+      set (target, p, v, r) {
+        if (Object.is(Reflect.get(target, p, r), v)) return true
+        const re = Reflect.set(target, p, v, r)
+        if (re) {
+          updates.add(target)
+          if (typeof modifiedList[target[ROOT]] === 'undefined') modifiedList[target[ROOT]] = null
+          if (!modified) {
+            modified = true
+            new Promise(resolve => resolve()).then(patch)
           }
         }
-      })
-      model.getModel = model[MODELS] = getModel
-      ids.set(modelClass, models.push(model) - 1)
-      contexts.push(createContext(null as Model))
+        return re
+      }
     }
-    if (update) update(!flag)
+    const proxy = (s: any, u: number, parent?: any, key?: any) => {
+      s[PROXY] = new Object()
+      s[ROOT] = u
+      s[PARENT] = parent
+      s[KEY] = key
+      const re = new Proxy(s, handlers)
+      if (!key) s[BASE] = re
+      return re
+    }
+    _getStore = (store: any) => stores[ids.get(store)]
+    const gs = <M extends typeof Store> (store: M) => {
+      const v = stores[ids.get(store)]
+      if (!v) throw new Error('No such store: ' + /* istanbul ignore next */ (store && ((store as any).name || store)))
+      return v as InstanceType<M>
+    }
+    function addStore () {
+      let j = arguments.length
+      while (j--) {
+        const it = arguments[j]
+        const store = it instanceof Store ? it : new it()
+        const proto = Object.getPrototypeOf(store)
+        const storeClass = proto.constructor as typeof Store
+        if (ids.has(storeClass)) {
+          /* istanbul ignore next */
+          throw new Error('The store already exists: ' + ((storeClass as any).name || storeClass))
+        }
+        Reflect.ownKeys(store).forEach(k => store[k] && store[k][STORE] && (store[k] = gs(store[k][STORE])))
+        Reflect.ownKeys(proto).forEach(k => proto[k] && proto[k][STORE] && (store[k] = gs(proto[k][STORE])))
+        store.getStore = gs
+        ids.set(storeClass, stores.push(proxy(store, stores.length)) - 1)
+        contexts.push(createContext(null))
+        flags.push(false)
+      }
+      if (update) update(!flag)
+    }
+    addStore.apply(null, arguments)
+    const ret: any = (props: React.PropsWithChildren<{}>) => {
+      const v = useState(false)
+      flag = v[0]
+      update = v[1]
+      return c(G.Provider, value, contexts.reduceRight((p, t, i) => c(t.Provider, new V(flags[i]), p), props.children))
+    }
+    ret.getStore = gs
+    ret.addStores = addStore
+    ret.patch = patch
+    _getStore = null
+    return ret
   }
-  addModel.apply(null, arguments)
-  const ret = (props: React.PropsWithChildren<{}>) => {
-    const v = useState(flag)
-    flag = v[0]
-    update = v[1]
-    return c(G.Provider, value, contexts.reduceRight((p, t, i) => c(t.Provider, new V(models[i]), p), props.children))
-  }
-  ret.getModel = getModel
-  ret.addModels = addModel
-  return ret as any
-}

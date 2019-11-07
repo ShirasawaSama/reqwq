@@ -1,12 +1,16 @@
 {
-  "name": "use-model",
+  "name": "reqwq",
   "version": "0.1.0",
-  "description": "Lightweight global state manager of React hooks based on Immer.",
+  "description": "Lightweight global state manager of React hooks based on Proxy.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist/*",
     "README.md"
+  ],
+  "browserslist": [
+    "ie 9",
+    "safari 6"
   ],
   "scripts": {
     "start": "parcel index.html",
@@ -17,7 +21,7 @@
     "lint": "tslint *.tsx,index.ts",
     "prepare": "npm run build",
     "prepublishOnly": "npm run lint && ava",
-    "build": "bili index.ts --format cjs --format umd --format esm --bundle-node-modules --external react --module-name use-model"
+    "build": "bili index.ts --format cjs --format umd --format esm --external react --module-name use-model"
   },
   "husky": {
     "hooks": {
@@ -26,51 +30,51 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ShirasawaSama/use-model.git"
+    "url": "git+https://github.com/ShirasawaSama/reqwq.git"
   },
   "keywords": [
     "react",
     "hooks",
-    "immer",
+    "proxy",
     "state",
-    "global"
+    "global",
+    "store"
   ],
   "author": "Shirasawa",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ShirasawaSama/use-model/issues"
+    "url": "https://github.com/ShirasawaSama/reqwq/issues"
   },
-  "homepage": "https://github.com/ShirasawaSama/use-model#readme",
+  "homepage": "https://github.com/ShirasawaSama/reqwq#readme",
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^0.1.3",
     "@types/enzyme": "^3.10.3",
-    "@types/react-dom": "^16.9.0",
-    "ava": "^2.3.0",
+    "@types/react-dom": "^16.9.3",
+    "ava": "^2.4.0",
     "bili": "^4.8.1",
-    "codecov": "^3.5.0",
+    "codecov": "^3.6.1",
     "enzyme": "^3.10.0",
-    "enzyme-adapter-react-16": "^1.14.0",
-    "husky": "^3.0.5",
-    "jsdom": "^15.1.1",
+    "enzyme-adapter-react-16": "^1.15.1",
+    "husky": "^3.0.9",
+    "jsdom": "^15.2.1",
     "nyc": "^14.1.1",
-    "parcel": "^1.12.3",
-    "react": "^16.9.0",
+    "parcel": "^1.12.4",
+    "react": "^16.11.0",
     "react-addons-test-utils": "^15.6.2",
-    "react-dom": "^16.9.0",
-    "rollup-plugin-typescript2": "^0.24.2",
-    "source-map-support": "^0.5.13",
-    "ts-node": "^8.3.0",
-    "tslint": "^5.19.0",
-    "tslint-config-standard": "^8.0.1",
-    "tslint-react": "^4.0.0",
-    "typescript": "^3.6.2"
+    "react-dom": "^16.11.0",
+    "rollup-plugin-typescript2": "^0.25.2",
+    "source-map-support": "^0.5.16",
+    "ts-node": "^8.4.1",
+    "tslint": "^5.20.1",
+    "tslint-config-standard": "^9.0.0",
+    "tslint-react": "^4.1.0",
+    "typescript": "^3.7.2"
   },
   "dependencies": {
-    "@types/react": "^16.9.2",
-    "immer": "^3.2.0"
+    "@types/react": "^16.9.11"
   },
   "peerDependencies": {
-    "react": "^16.9.0"
+    "react": "^16.11.0"
   },
   "ava": {
     "require": [

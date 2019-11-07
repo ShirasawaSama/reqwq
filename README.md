@@ -1,6 +1,6 @@
-# use-model [![JavaScript Style Guide](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](http://standardjs.com/) [![Build Status](https://travis-ci.org/ShirasawaSama/use-model.svg?branch=master)](https://travis-ci.org/ShirasawaSama/use-model) [![codecov](https://codecov.io/gh/ShirasawaSama/use-model/branch/master/graph/badge.svg)](https://codecov.io/gh/ShirasawaSama/use-model) [![GitHub stars](https://img.shields.io/github/stars/ShirasawaSama/use-model.svg?style=social&label=Stars)](https://github.com/ShirasawaSama/use-model)
+# reqwq [![JavaScript Style Guide](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](http://standardjs.com/) [![Build Status](https://travis-ci.org/ShirasawaSama/reqwq.svg?branch=master)](https://travis-ci.org/ShirasawaSama/reqwq) [![codecov](https://codecov.io/gh/ShirasawaSama/reqwq/branch/master/graph/badge.svg)](https://codecov.io/gh/ShirasawaSama/reqwq) [![GitHub stars](https://img.shields.io/github/stars/ShirasawaSama/reqwq.svg?style=social&label=Stars)](https://github.com/ShirasawaSama/reqwq)
 
-Lightweight global state manager of React hooks based on [Immer](https://github.com/immerjs/immer).
+Lightweight global state manager of React hooks based on Proxy.
 
 ## Install
 
@@ -15,7 +15,7 @@ Currently not pushed to npmjs.
 CounterModel.ts:
 
 ```ts
-import { Model } from 'use-model'
+import { Model } from 'reqwq'
 
 export default class CounterModel extends Model {
   public count = 0
@@ -32,7 +32,7 @@ App.tsx:
 ```ts
 import React from 'react'
 import CounterModel from './CounterModel'
-import { useModel } from 'use-model'
+import { useModel } from 'reqwq'
 
 const Provider = getProvider(CounterModel)
 
@@ -55,7 +55,7 @@ export default App
 CounterModel.ts:
 
 ```diff
-import { Model } from 'use-model'
+import { Model } from 'reqwq'
 
 + const sleep = (time: number) => new Promise(resolve => setTimeout(resolve, time))
 export default class CounterModel extends Model {
@@ -92,7 +92,7 @@ const Counter: React.FC = () => {
 AnotherModel.ts:
 
 ```ts
-import { Model } from 'use-model'
+import { Model } from 'reqwq'
 
 export default class AnotherModel extends Model {
   public messages = ['hello']
@@ -106,7 +106,7 @@ App.tsx:
 import React from 'react'
 import CounterModel from './CounterModel'
 + import AnotherModel from './AnotherModel'
-import { useModel } from 'use-model'
+import { useModel } from 'reqwq'
 
 ! const Provider = getProvider(CounterModel, AnotherModel)
 
@@ -129,7 +129,7 @@ export default App
 CounterModel.ts:
 
 ```diff
-import { Model } from 'use-model'
+import { Model } from 'reqwq'
 import AnotherModel from './AnotherModel'
 
 export default class CounterModel extends Model {
