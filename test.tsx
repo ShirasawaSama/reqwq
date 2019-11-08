@@ -3,6 +3,7 @@ import * as U from './index'
 import React from 'react'
 import Adapter from 'enzyme-adapter-react-16'
 import * as jsdom from 'jsdom'
+import { types } from 'util'
 import { mount, configure } from 'enzyme'
 const { window } = new jsdom.JSDOM('<body></body>')
 Object.assign(global, {
@@ -34,10 +35,12 @@ test('basic', async t => {
   Provider.patch()
   app.update()
   t.true(app.html().includes('Value:1'), 're-rendered')
+  store.i = 2
   store.arr.push(5)
   Provider.patch()
   app.update()
   t.true(app.html().includes('Array:1,5'), 'array')
+  t.true(app.html().includes('Value:2'), 'multiple update')
 
   class UnRegistered extends Store { public i = 'ahh' }
   const B: React.FC = () => {
@@ -125,4 +128,34 @@ test('outside', t => {
   store.patch()
   app.update()
   t.true(app.html().includes('Array:1,7'), 'deep re-rendered')
+
+  class F1 extends U.ComponentWithStore {
+    public i = 0
+    public render () {
+      store = this
+      return <>Value:{this.i}</>
+    }
+  }
+  app = mount(<F1 />)
+  t.true(app.html().includes('Value:0'), 'init')
+  store.i++
+  store.patch()
+  app.update()
+  t.true(app.html().includes('Value:1'), 're-rendered')
+
+  class F2 extends U.PureComponentWithStore {
+    public deep = { i: 0 }
+    public t = { [U.NOT_PROXY]: true, g: 0 }
+    public render () {
+      store = this
+      return <>Value:{this.deep.i}</>
+    }
+  }
+  app = mount(<F2 />)
+  t.true(app.html().includes('Value:0'), 'init')
+  store.deep.i++
+  store.patch()
+  app.update()
+  t.true(app.html().includes('Value:1'), 're-rendered')
+  t.false(types.isProxy(store.t), 'not proxy')
 })

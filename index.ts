@@ -13,6 +13,8 @@ const ROOT = Symbol('Root')
 const KEY = Symbol('Key')
 const BASE = Symbol('Base')
 const ON_CHANGE = Symbol('onChange')
+const REACT_COMPONENT = Symbol('reactComponent')
+export const NOT_PROXY = Symbol('notProxy')
 
 interface Ctx { ids: Map<typeof Store, number>, contexts: Array<Context<null>>, stores: Store[] }
 const G = createContext(null as Ctx)
@@ -52,14 +54,23 @@ export const useStore = <T extends typeof Store> (store: T) => {
 }
 function V (v: any) { this.value = v }
 
+export const isReactInternal = (p: string) => {
+  /* istanbul ignore next */ switch (p) {
+    case 'updater': case '_reactInternalFiber': case '_reactInternalInstance': case 'refs':
+    case 'context': case 'props': case 'state': return true
+    default: return false
+  }
+}
 const handlers: ProxyHandler<any> = {
   get (target, p, r) {
+    if (target[REACT_COMPONENT] && isReactInternal(p as string)) return target[p]
     if (p === PROXY) return target[PROXY]
     if (typeof target[PROXY][p] !== 'undefined') return target[PROXY][p]
     const v = Reflect.get(target, p, r)
     if (p === 'toJSON') return v || (() => target)
     switch (typeof v) {
-      case 'object': return (target[PROXY][p] = createProxy(v, target[ON_CHANGE], target[ROOT], target, p))
+      case 'object': return v[NOT_PROXY] || v[PROXY]
+        ? v : (target[PROXY][p] = createProxy(v, target[ON_CHANGE], target[ROOT], target, p))
       case 'function': return target[BASE] ? (target[PROXY][p] = v.bind(target[BASE])) : v
       default: return v
     }
@@ -102,13 +113,13 @@ export const newInstance: (...stores: Array<Store | typeof Store>) => React.FC &
         const k = u[KEY]
         const curV = parent[k]
         parent[PROXY][k] = undefined
-        parent[k] = Array.isArray(curV) ? curV.slice() : Object.assign(new Object(), curV)
+        parent[k] = /* istanbul ignore next */ Array.isArray(curV) ? curV.slice() : Object.assign(new Object(), curV)
       })
       for (const id in modifiedList) flags[id] = !flags[id]
       modifiedList = {}
       updates.clear()
       modified = false
-      if (update) update(!flag)
+      /* istanbul ignore next */ if (update) update(!flag)
     }
     const change = (target: any) => {
       updates.add(target)
@@ -193,4 +204,21 @@ export const useOutsideStore = <T> (fn: () => T): T & { patch (): void } => {
   const ref = React.useRef<any>()
   if (!ref.current) ref.current = createOutsideStore(fn(), () => ref2.current[1](!ref2.current[0]))
   return ref.current
+}
+
+export class ComponentWithStore extends Component {
+  public readonly [REACT_COMPONENT] = true
+  public readonly patch: () => void
+  constructor (a: any, b: any) {
+    super(a, b)
+    return createOutsideStore(this, () => this.forceUpdate())
+  }
+}
+export class PureComponentWithStore extends PureComponent {
+  public readonly [REACT_COMPONENT] = true
+  public readonly patch: () => void
+  constructor (a: any, b: any) {
+    super(a, b)
+    return createOutsideStore(this, () => this.forceUpdate())
+  }
 }
