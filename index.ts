@@ -17,7 +17,7 @@ const ON_CHANGE = Symbol('onChange')
 interface Ctx { ids: Map<typeof Store, number>, contexts: Array<Context<null>>, stores: Store[] }
 const G = createContext(null as Ctx)
 
-let _getStore
+let _getStore: any
 const TEXT = 'Initialization is not complete yet.'
 export const getStore = <T extends typeof Store> (store: T) => (_getStore && _getStore(store)) || new Proxy({}, {
   get (_, key) { /* istanbul ignore next */ if (key === STORE) return store; else throw new Error(TEXT) },
@@ -25,8 +25,7 @@ export const getStore = <T extends typeof Store> (store: T) => (_getStore && _ge
 }) as InstanceType<T>
 export const injectStore = <T extends typeof Store> (store: T) => (t: any, key: string) => (t[key] = getStore(store))
 export const withStores = <T extends { [key: string]: typeof Store }> (stores: T,
-  mapping?: (t: { [key in keyof T]: InstanceType<T[key]> }) => any) =>
-  (C: typeof Component) => {
+  mapping?: (t: { [key in keyof T]: InstanceType<T[key]> }) => any) => (C: typeof Component) => {
     const F: React.FC = props => {
       const ctx = useContext(G)
       const obj: any = { }
@@ -35,8 +34,7 @@ export const withStores = <T extends { [key: string]: typeof Store }> (stores: T
         useContext(ctx.contexts[id])
         obj[i] = ctx.stores[id]
       }
-      /* istanbul ignore next */
-      return c(C, Object.assign((mapping && mapping(obj)) || obj), props)
+      /* istanbul ignore next */ return c(C, Object.assign((mapping && mapping(obj)) || obj), props)
     }
     return class extends PureComponent {
       public render () {
@@ -73,7 +71,7 @@ const handlers: ProxyHandler<any> = {
     return re
   }
 }
-export const createProxy = (s: any, onChange: (target: any) => void, id?: number, parent?: any, key?: any) => {
+export const createProxy = <T> (s: T, onChange: (target: any) => void, id?: number, parent?: any, key?: any) => {
   s[PROXY] = new Object()
   s[PARENT] = parent
   s[KEY] = key
@@ -81,7 +79,7 @@ export const createProxy = (s: any, onChange: (target: any) => void, id?: number
   if (id != null) s[ROOT] = id
   const re = new Proxy(s, handlers)
   if (!key) s[BASE] = re
-  return re
+  return re as T
 }
 
 export const newInstance: (...stores: Array<Store | typeof Store>) => React.FC & { getStore: GetStore,
@@ -161,3 +159,38 @@ export const newInstance: (...stores: Array<Store | typeof Store>) => React.FC &
     _getStore = null
     return ret
   }
+
+let hasModified = false
+const updateList = new Set<any>()
+export const createOutsideStore = <T> (store: T, onChange?: () => void) => {
+  const patch = () => {
+    updateList.forEach(u => {
+      const parent = u[PARENT]
+      if (!parent) return
+      const k = u[KEY]
+      const curV = parent[k]
+      parent[PROXY][k] = undefined
+      parent[k] = Array.isArray(curV) ? curV.slice() : Object.assign(new Object(), curV)
+    })
+    updateList.clear()
+    hasModified = false
+    /* istanbul ignore next */ if (onChange) onChange()
+  }
+  const proxy = createProxy(store, target => {
+    updateList.add(target)
+    if (hasModified) return
+    hasModified = true
+    new Promise(resolve => resolve()).then(patch)
+  })
+  ;(proxy as any).patch = patch
+  return proxy as T & { patch (): void }
+}
+
+export const useOutsideStore = <T> (fn: () => T): T & { patch (): void } => {
+  const ret = useState(false)
+  const ref2 = React.useRef<any>()
+  ref2.current = ret
+  const ref = React.useRef<any>()
+  if (!ref.current) ref.current = createOutsideStore(fn(), () => ref2.current[1](!ref2.current[0]))
+  return ref.current
+}

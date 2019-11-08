@@ -96,10 +96,33 @@ test('basic', async t => {
   t.notThrows(() => {
     let g = false
     const d = U.createProxy({ a: 0 }, () => (g = true))
-    d.b = 2
+    d.a = 2
     t.true(g, 'onchange')
-    t.is(d.b, 2, 'changed')
+    t.is(d.a, 2, 'changed')
   })
 
   t.truthy(store.toJSON, 'toJSON')
+})
+
+test('outside', t => {
+  class M {
+    public i = 0
+    public deep = { g: [1] }
+    public add () { this.i++ }
+  }
+  let store: any
+  const F = () => {
+    store = U.useOutsideStore(() => new M())
+    return <>Value:{store.i} Array:{store.deep.g.join(',')}</>
+  }
+  let app = mount(<F />)
+  t.true(app.html().includes('Value:0'), 'init')
+  store.add()
+  store.patch()
+  app.update()
+  t.true(app.html().includes('Value:1'), 're-rendered')
+  store.deep.g.push(7)
+  store.patch()
+  app.update()
+  t.true(app.html().includes('Array:1,7'), 'deep re-rendered')
 })
