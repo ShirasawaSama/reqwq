@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
-import { create, Store, useStore } from './index'
+import { newInstance, Store, useStore } from './index'
 
 const sleep = (time: number) => new Promise(resolve => setTimeout(resolve, time))
 
@@ -22,7 +22,7 @@ class CounterModel extends Store {
   }
 }
 
-const Provider = create(CounterModel)
+const Provider = newInstance(CounterModel)
 
 const Counter: React.FC = () => {
   const model = useStore(CounterModel)

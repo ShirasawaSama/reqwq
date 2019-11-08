@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, Context, createElement as c
 
 export type GetStore = <M extends typeof Store> (store: M) => InstanceType<M>
 export class Store {
+  public toJSON: () => this
   public getStore: GetStore = () => { throw new Error('Initialization is not complete yet.') }
 }
 
@@ -11,6 +12,7 @@ const PARENT = Symbol('Parent')
 const ROOT = Symbol('Root')
 const KEY = Symbol('Key')
 const BASE = Symbol('Base')
+const ON_CHANGE = Symbol('onChange')
 
 interface Ctx { ids: Map<typeof Store, number>, contexts: Array<Context<null>>, stores: Store[] }
 const G = createContext(null as Ctx)
@@ -18,11 +20,11 @@ const G = createContext(null as Ctx)
 let _getStore
 const TEXT = 'Initialization is not complete yet.'
 export const getStore = <T extends typeof Store> (store: T) => (_getStore && _getStore(store)) || new Proxy({}, {
-  get (_, key) { if (key === STORE) return store; else throw new Error(TEXT) },
+  get (_, key) { /* istanbul ignore next */ if (key === STORE) return store; else throw new Error(TEXT) },
   set () { throw new Error(TEXT) }
 }) as InstanceType<T>
 export const injectStore = <T extends typeof Store> (store: T) => (t: any, key: string) => (t[key] = getStore(store))
-export const withStores = <T extends { [key: string]: typeof Store }> (stores = { } as T,
+export const withStores = <T extends { [key: string]: typeof Store }> (stores: T,
   mapping?: (t: { [key in keyof T]: InstanceType<T[key]> }) => any) =>
   (C: typeof Component) => {
     const F: React.FC = props => {
@@ -33,6 +35,7 @@ export const withStores = <T extends { [key: string]: typeof Store }> (stores = 
         useContext(ctx.contexts[id])
         obj[i] = ctx.stores[id]
       }
+      /* istanbul ignore next */
       return c(C, Object.assign((mapping && mapping(obj)) || obj), props)
     }
     return class extends PureComponent {
@@ -51,8 +54,38 @@ export const useStore = <T extends typeof Store> (store: T) => {
 }
 function V (v: any) { this.value = v }
 
-export const create: (...stores: Array<Store | typeof Store>) => React.FC & { getStore: GetStore, patch: () => void,
-  addStores: (...stores: Array<Store | typeof Store>) => void } = function () {
+const handlers: ProxyHandler<any> = {
+  get (target, p, r) {
+    if (p === PROXY) return target[PROXY]
+    if (typeof target[PROXY][p] !== 'undefined') return target[PROXY][p]
+    const v = Reflect.get(target, p, r)
+    if (p === 'toJSON') return v || (() => target)
+    switch (typeof v) {
+      case 'object': return (target[PROXY][p] = createProxy(v, target[ON_CHANGE], target[ROOT], target, p))
+      case 'function': return target[BASE] ? (target[PROXY][p] = v.bind(target[BASE])) : v
+      default: return v
+    }
+  },
+  set (target, p, v, r) {
+    if (Object.is(Reflect.get(target, p, r), v)) return true
+    const re = Reflect.set(target, p, v, r)
+    /* istanbul ignore next */ if (re) target[ON_CHANGE](target)
+    return re
+  }
+}
+export const createProxy = (s: any, onChange: (target: any) => void, id?: number, parent?: any, key?: any) => {
+  s[PROXY] = new Object()
+  s[PARENT] = parent
+  s[KEY] = key
+  s[ON_CHANGE] = onChange
+  if (id != null) s[ROOT] = id
+  const re = new Proxy(s, handlers)
+  if (!key) s[BASE] = re
+  return re
+}
+
+export const newInstance: (...stores: Array<Store | typeof Store>) => React.FC & { getStore: GetStore,
+  patch: () => void, addStores: (...stores: Array<Store | typeof Store>) => void } = function () {
     let update: (data: boolean) => void = null
     let flag = false
     const ids = new WeakMap<typeof Store, number>()
@@ -79,40 +112,13 @@ export const create: (...stores: Array<Store | typeof Store>) => React.FC & { ge
       modified = false
       if (update) update(!flag)
     }
-    const handlers: ProxyHandler<any> = {
-      get (target, p, r) {
-        if (p === PROXY) return target[PROXY]
-        if (typeof target[PROXY][p] !== 'undefined') return target[PROXY][p]
-        const v = Reflect.get(target, p, r)
-        if (p === 'toJSON') return v || (() => target)
-        switch (typeof v) {
-          case 'object': return (target[PROXY][p] = proxy(Reflect.get(target, p, r), target[ROOT], target, p))
-          case 'function': return target[BASE] ? (target[PROXY][p] = v.bind(target[BASE])) : v
-          default: return v
-        }
-      },
-      set (target, p, v, r) {
-        if (Object.is(Reflect.get(target, p, r), v)) return true
-        const re = Reflect.set(target, p, v, r)
-        if (re) {
-          updates.add(target)
-          if (typeof modifiedList[target[ROOT]] === 'undefined') modifiedList[target[ROOT]] = null
-          if (!modified) {
-            modified = true
-            new Promise(resolve => resolve()).then(patch)
-          }
-        }
-        return re
+    const change = (target: any) => {
+      updates.add(target)
+      if (typeof modifiedList[target[ROOT]] === 'undefined') modifiedList[target[ROOT]] = null
+      if (!modified) {
+        modified = true
+        new Promise(resolve => resolve()).then(patch)
       }
-    }
-    const proxy = (s: any, u: number, parent?: any, key?: any) => {
-      s[PROXY] = new Object()
-      s[ROOT] = u
-      s[PARENT] = parent
-      s[KEY] = key
-      const re = new Proxy(s, handlers)
-      if (!key) s[BASE] = re
-      return re
     }
     _getStore = (store: any) => stores[ids.get(store)]
     const gs = <M extends typeof Store> (store: M) => {
@@ -131,10 +137,12 @@ export const create: (...stores: Array<Store | typeof Store>) => React.FC & { ge
           /* istanbul ignore next */
           throw new Error('The store already exists: ' + ((storeClass as any).name || storeClass))
         }
+        /* istanbul ignore next */
         Reflect.ownKeys(store).forEach(k => store[k] && store[k][STORE] && (store[k] = gs(store[k][STORE])))
+        /* istanbul ignore next */
         Reflect.ownKeys(proto).forEach(k => proto[k] && proto[k][STORE] && (store[k] = gs(proto[k][STORE])))
         store.getStore = gs
-        ids.set(storeClass, stores.push(proxy(store, stores.length)) - 1)
+        ids.set(storeClass, stores.push(createProxy(store, change, stores.length)) - 1)
         contexts.push(createContext(null))
         flags.push(false)
       }
