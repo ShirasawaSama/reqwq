@@ -27,7 +27,7 @@ export const getStore = <T extends typeof Store> (store: T) => (_getStore && _ge
 }) as InstanceType<T>
 export const injectStore = <T extends typeof Store> (store: T) => (t: any, key: string) => (t[key] = getStore(store))
 export const withStores = <T extends { [key: string]: typeof Store }> (stores: T,
-  mapping?: (t: { [key in keyof T]: InstanceType<T[key]> }) => any) => (C: typeof Component) => {
+  mapping?: (t: { [key in keyof T]: InstanceType<T[key]> }, props: any) => any) => (C: typeof Component) => {
     const F: React.FC = props => {
       const ctx = useContext(G)
       const obj: any = { }
@@ -36,7 +36,8 @@ export const withStores = <T extends { [key: string]: typeof Store }> (stores: T
         useContext(ctx.contexts[id])
         obj[i] = ctx.stores[id]
       }
-      /* istanbul ignore next */ return c(C, Object.assign((mapping && mapping(obj)) || obj), props)
+      /* istanbul ignore next */
+      return c(C, Object.assign(new Object(), props, (mapping && mapping(obj, props)) || obj))
     }
     return class extends PureComponent {
       public render () {
