@@ -1,26 +1,26 @@
 # reqwq [![JavaScript Style Guide](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](http://standardjs.com/) [![Build Status](https://travis-ci.org/ShirasawaSama/reqwq.svg?branch=master)](https://travis-ci.org/ShirasawaSama/reqwq) [![codecov](https://codecov.io/gh/ShirasawaSama/reqwq/branch/master/graph/badge.svg)](https://codecov.io/gh/ShirasawaSama/reqwq) [![GitHub stars](https://img.shields.io/github/stars/ShirasawaSama/reqwq.svg?style=social&label=Stars)](https://github.com/ShirasawaSama/reqwq)
 
-A reactivity state manager of React.js
+一个响应式的 React.js 状态管理模块.
 
 [简体中文](./README.zh.md) [English](./README.md)
 
-## Install
+## 安装
 
 ```bash
 npm install reqwq
 ```
 
-## Features
+## 特性
 
-- **Reactivity**: When you modify them, the view updates.
-- **Lightweight**: Only 2KB *(gzip)*.
-- **TypeScript Support**: Includes TypeScript definitions.
-- **Proxy**: Build on ES6 Proxy.
-- **Hooks Support**
+- **响应式**: 当你修改了数据, 网页内容也会随之更新.
+- **轻量**: *Gzip* 后只有不到 2KB.
+- **TypeScript 支持**: 使用 TypeScript 编写.
+- **Proxy**: 基于 ES6 的 Proxy 对数据更新进行拦截.
+- **Hooks 支持**: 支持 React 的 Hooks.
 
-## Usage
+## 使用方法
 
-### Create a store
+### 创建一个状态库
 
 CounterStore.ts:
 
@@ -35,7 +35,7 @@ export default class CounterStore extends Store {
 }
 ```
 
-### Apply to your application
+### 在你的组建中引用状态库
 
 App.tsx:
 
@@ -60,7 +60,7 @@ const App: React.FC = () => (<Provider><Counter /></Provider>)
 export default App
 ```
 
-### Async support
+### 异步函数支持
 
 CounterStore.ts:
 
@@ -96,7 +96,7 @@ App.tsx:
 # }
 ```
 
-### Reference data from another Store
+### 从别的状态库中获取数据
 
 AnotherStore.ts:
 
@@ -119,7 +119,7 @@ App.tsx:
 
 - const Provider = newInstance(CounterStore)
 + const Provider = newInstance(CounterStore, AnotherStore)
-+ const anotherStore = Provider.getStore(AnotherStore) // This is OK.
++ const anotherStore = Provider.getStore(AnotherStore) // 这也是一种方法
 
 # const Counter: React.FC = () => {
 #   const store = useStore(CounterStore)
@@ -147,18 +147,18 @@ CounterStore.ts:
 +   @injectStore(AnotherStore)
 +   private readonly anotherStore: AnotherStore
 +
-+   private readonly store2 = getStore(AnotherStore) // This is OK.
++   private readonly store2 = getStore(AnotherStore) // 这也是一种方法
 #   public count = 0
 #   public add () {
 #     this.count++
 +     this.anotherStore.world()
 +     this.store2.messages.forEach(alert)
-+     // this.getStore(AnotherStore).messages // This is OK.
++     // this.getStore(AnotherStore).messages // 这样也行, 是动态获取的
 #   }
 # }
 ```
 
-### Add stores dynamically
+### 动态添加新的状态库
 
 ```ts
 import { newInstance } from 'reqwq'
@@ -173,7 +173,7 @@ const fn = async () => {
 fn()
 ```
 
-### Class Component
+### 在 `Class组件` 中引入状态库
 
 ```tsx
 import React, { Component } from 'react'
@@ -198,7 +198,7 @@ export class D extends Component {
 }
 ```
 
-### Class Component with reactivity store
+### 包含响应式数据的 `Class组件`
 
 ```tsx
 import React from 'react'
@@ -214,7 +214,7 @@ export default class C extends ComponentWithStore {
 }
 ```
 
-### Hooks with reactivity store
+### 包含响应式数据的 `Hooks组件`
 
 ```tsx
 import React from 'react'
@@ -234,45 +234,45 @@ const F: React.FC = () => {
 export default F
 ```
 
-### Manually patch data
+### 手动触发数据更新
 
-By default, the data will be updated at the end of the event loop. If you want to update in advance, you need to do the following:
+数据库默认会在当前事件循环末尾进行数据更新, 如果你想提前更新则需要以下操作:
 
 ```ts
-// Global store:
+// 全局数据库:
 const G = newInstance(Store)
 G.patch()
 
-// Component with reactivity store:
+// 包含响应式数据的 Class组件:
 class C extends ComponentWithStore {
   private i = 0
   public fn () { this.patch() }
 }
 
-// Hooks with reactivity store:
+// 包含响应式数据的 Hooks组件:
 const store = useOutsideStore(() => new Store())
 store.patch()
 ```
 
-## IE 9 and Safari 6
+## IE 9 与 Safari 6 支持
 
-Firstly, install module:
+首先安装模块:
 
 ```bash
 npm i proxy-polyfill
 ```
 
-Then import them:
+然后引入模块:
 
 ```ts
 import 'proxy-polyfill'
 import { newInstance } from 'reqwq'
 ```
 
-## Author
+## 作者
 
 Shirasawa
 
-## License
+## 协议
 
 [MIT](./LICENSE)
