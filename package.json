@@ -6,7 +6,8 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist/*",
-    "README.md"
+    "README.md",
+    "README.zh.md"
   ],
   "browserslist": [
     "ie 9",
@@ -21,7 +22,7 @@
     "lint": "tslint *.tsx,index.ts",
     "prepare": "npm run build",
     "prepublishOnly": "npm run lint && ava",
-    "build": "bili index.ts --format cjs --format umd --format esm --external react --module-name use-model"
+    "build": "del-cli dist && bili index.ts --format cjs --format umd --format esm --external react --module-name reqwq && tsc -m commonjs --removeComments"
   },
   "husky": {
     "hooks": {
@@ -53,6 +54,7 @@
     "ava": "^2.4.0",
     "bili": "^4.8.1",
     "codecov": "^3.6.1",
+    "del-cli": "^3.0.0",
     "enzyme": "^3.10.0",
     "enzyme-adapter-react-16": "^1.15.1",
     "husky": "^3.0.9",

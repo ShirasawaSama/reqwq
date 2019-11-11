@@ -10,7 +10,8 @@
     "moduleResolution": "node",
     "jsx": "react",
     "sourceMap": true,
-    "declaration": true
+    "declaration": true,
+    "outDir": "dist/esnext"
   },
   "files": [
     "index.ts"
