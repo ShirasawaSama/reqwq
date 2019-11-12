@@ -137,8 +137,8 @@ export const newInstance: (...stores: Array<Store | typeof Store>) => React.FC &
       return v as InstanceType<M>
     }
     function addStore () {
-      let j = arguments.length
-      while (j--) {
+      const len = arguments.length
+      for (var j = 0; j < len; j++) {
         const it = arguments[j]
         const store = it instanceof Store ? it : new it()
         const proto = Object.getPrototypeOf(store)
