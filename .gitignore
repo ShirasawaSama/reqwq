@@ -1,8 +1,12 @@
 node_modules
 .cache
 dist
-*.js
 *.map
 coverage
 .nyc_output
 index.d.ts
+/index.js
+/dev.js
+/babel.js
+/test.js
+/devBabel.js

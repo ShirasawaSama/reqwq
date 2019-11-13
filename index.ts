@@ -1,5 +1,12 @@
 import React, { createContext, useState, useContext, Context, createElement as c, Component, PureComponent } from 'react'
 
+declare module 'react' {
+  interface Attributes {
+    rModel?: string | boolean | number
+    rPropName?: string
+  }
+}
+
 export type GetStore = <M extends typeof Store> (store: M) => InstanceType<M>
 export class Store {
   public toJSON: () => this
@@ -113,7 +120,7 @@ export const newInstance: (...stores: Array<Store | typeof Store>) => React.FC &
         if (!parent) return
         const k = u[KEY]
         const curV = parent[k]
-        parent[PROXY][k] = undefined
+        curV[PROXY] = parent[PROXY][k] = undefined
         parent[k] = /* istanbul ignore next */ Array.isArray(curV) ? curV.slice() : Object.assign(new Object(), curV)
       })
       for (const id in modifiedList) flags[id] = !flags[id]
@@ -181,7 +188,7 @@ export const createOutsideStore = <T> (store: T, onChange?: () => void) => {
       if (!parent) return
       const k = u[KEY]
       const curV = parent[k]
-      parent[PROXY][k] = undefined
+      curV[PROXY] = parent[PROXY][k] = undefined
       parent[k] = Array.isArray(curV) ? curV.slice() : Object.assign(new Object(), curV)
     })
     updateList.clear()

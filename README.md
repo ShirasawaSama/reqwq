@@ -16,7 +16,8 @@ npm install reqwq
 - **Lightweight**: Only 2KB *(gzip)*.
 - **TypeScript Support**: Includes TypeScript definitions.
 - **Proxy**: Build on ES6 Proxy.
-- **Hooks Support**
+- **Immutable**: Data update does not modify the previous object.
+- **Hooks Support**: React hooks syntax supporting.
 
 ## Usage
 
@@ -253,6 +254,46 @@ class C extends ComponentWithStore {
 // Hooks with reactivity store:
 const store = useOutsideStore(() => new Store())
 store.patch()
+```
+
+## Babel plugin: react-model (rModel)
+
+With this babel plugin, you can easily use [two-way data binding](https://vuejs.org/v2/guide/forms.html) likes [Vue.js](https://vuejs.org)
+
+### .babelrc
+
+```json
+{
+  "plugin": ["reqwq/babel-plugin.js"]
+}
+```
+
+### Config
+
+```json
+{
+  "plugin": [["reqwq/babel-plugin.js"], { "prefix": "r", "notTransformObject": false }]
+}
+```
+
+### Usage
+
+```tsx
+<input rModel={this.text} />
+<input rModel={this.count} type="number" /> // this.count must be a number
+<input rModel={this.checked} type="radio" /> // property name is 'checked'
+<input rModel={this.checked} type="checkbox" /> // property name is 'checked'
+<MyInput rModel={this.custom} rPropName="customProp" />
+<MyCheckBox rModel={this.checked} rPropName="checked" />
+```
+
+Equivalent to:
+
+```tsx
+<input value={this.text} onChange={a => {
+  a = a.target.value
+  this.text = typeof this.value === 'number' ? +a : a
+}} />
 ```
 
 ## IE 9 and Safari 6

@@ -16,6 +16,7 @@ npm install reqwq
 - **轻量**: *Gzip* 后只有不到 2KB.
 - **TypeScript 支持**: 使用 TypeScript 编写.
 - **Proxy**: 基于 ES6 的 Proxy 对数据更新进行拦截.
+- **数据不可变**: 数据更新不会改变先前的对象结构.
 - **Hooks 支持**: 支持 React 的 Hooks.
 
 ## 使用方法
@@ -253,6 +254,46 @@ class C extends ComponentWithStore {
 // 包含响应式数据的 Hooks组件:
 const store = useOutsideStore(() => new Store())
 store.patch()
+```
+
+## Babel 插件: react-model (rModel)
+
+有了这个插件你可以轻松使用类似于 [Vue.js](https://vuejs.org) 中的 [双向绑定](https://vuejs.org/v2/guide/forms.html) 语法糖.
+
+### .babelrc
+
+```json
+{
+  "plugin": ["reqwq/babel-plugin.js"]
+}
+```
+
+### 配置
+
+```json
+{
+  "plugin": [["reqwq/babel-plugin.js"], { "prefix": "r", "notTransformObject": false }]
+}
+```
+
+### 使用
+
+```tsx
+<input rModel={this.text} />
+<input rModel={this.count} type="number" /> // this.count 必须为一个数字
+<input rModel={this.checked} type="radio" /> // 此时自动从 'checked' 字段取值
+<input rModel={this.checked} type="checkbox" /> // 此时自动从 'checked' 字段取值
+<MyInput rModel={this.custom} rPropName="customProp" />
+<MyCheckBox rModel={this.checked} rPropName="checked" />
+```
+
+等价于:
+
+```tsx
+<input value={this.text} onChange={a => {
+  a = a.target.value
+  this.text = typeof this.value === 'number' ? +a : a
+}} />
 ```
 
 ## IE 9 与 Safari 6 支持
