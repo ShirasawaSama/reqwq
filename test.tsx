@@ -84,6 +84,8 @@ test('basic', async t => {
   Provider.patch()
   app.update()
   t.true(app.html().includes('Value:1'), 're-rendered')
+  delete store.i
+  t.is(store.i, undefined, 'delete')
 
   class M3 extends Store {
     public x = null

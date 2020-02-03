@@ -88,6 +88,11 @@ const handlers: ProxyHandler<any> = {
     const re = Reflect.set(target, p, v, r)
     /* istanbul ignore next */ if (re) target[ON_CHANGE](target)
     return re
+  },
+  deleteProperty (target, p) {
+    const re = Reflect.deleteProperty(target, p)
+    /* istanbul ignore next */ target[ON_CHANGE](target)
+    return re
   }
 }
 export const createProxy = <T> (s: T, onChange: (target: any) => void, id?: number, parent?: any, key?: any) => {
