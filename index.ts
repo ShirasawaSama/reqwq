@@ -91,7 +91,8 @@ const handlers: ProxyHandler<any> = {
   },
   deleteProperty (target, p) {
     const re = Reflect.deleteProperty(target, p)
-    /* istanbul ignore next */ target[ON_CHANGE](target)
+    /* istanbul ignore next */ if (re) target[ON_CHANGE](target)
+    /* istanbul ignore next */ if (typeof target[PROXY][p] !== 'undefined') delete target[PROXY][p]
     return re
   }
 }
