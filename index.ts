@@ -76,7 +76,7 @@ const handlers: ProxyHandler<any> = {
     if (typeof target[PROXY][p] !== 'undefined') return target[PROXY][p]
     const v = Reflect.get(target, p, r)
     if (p === 'toJSON') return v || (() => target)
-    /* istanbul ignore next */ else if (p == null) return v
+    /* istanbul ignore next */ else if (v == null) return v
     switch (typeof v) {
       case 'object': return v[NOT_PROXY] || v[PROXY]
         ? v : (target[PROXY][p] = createProxy(v, target[ON_CHANGE], target[ROOT], target, p))
