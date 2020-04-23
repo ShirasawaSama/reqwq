@@ -12,7 +12,7 @@ Object.assign(global, {
   navigator: window.navigator
 })
 configure({ adapter: new (Adapter as any)() })
-
+console.log(2333)
 const { newInstance, Store, useStore } = U
 
 test('basic', async t => {

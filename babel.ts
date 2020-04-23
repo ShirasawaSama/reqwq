@@ -36,8 +36,9 @@ export default (): { visitor: Visitor } => ({
       p.get('attributes').forEach(it => {
         if (!it.isJSXAttribute()) return
         const nameNode = it.get('name')
-        if (!nameNode.isJSXIdentifier()) return
+        if (Array.isArray(nameNode) || !nameNode.isJSXIdentifier()) return
         const v = it.get('value')
+        if (Array.isArray(v)) return
         const name = nameNode.node.name
         if (name === 'type' && v.isStringLiteral()) {
           const type = v.node.value
@@ -59,7 +60,7 @@ export default (): { visitor: Visitor } => ({
       const value = attr.get('value')
       if (value.isJSXExpressionContainer() && propName) {
         const v = value.get('expression')
-        if (v.isMemberExpression() || v.isIdentifier()) {
+        if (!Array.isArray(v) && (v.isMemberExpression() || v.isIdentifier())) {
           p.node.attributes.unshift(
             t.jsxAttribute(t.jsxIdentifier(propName), value.node),
             t.jsxAttribute(t.jsxIdentifier('onChange'), t.jsxExpressionContainer(buildFn(propName, v.node)))
@@ -83,7 +84,7 @@ export default (): { visitor: Visitor } => ({
         if (!key.isIdentifier()) return
         const name = key.node.name
         const v = it.get('value')
-        if (name === 'type' && v.isStringLiteral()) {
+        if (name === 'type' && !Array.isArray(v) && v.isStringLiteral()) {
           const type = v.node.value
           if (type === 'checkbox' || type === 'radio') propName = 'checked'
         }
@@ -92,6 +93,7 @@ export default (): { visitor: Visitor } => ({
             attr = it
             break
           case 'PropName':
+            if (Array.isArray(v)) break
             v.assertStringLiteral()
             propName = (v.node as t.StringLiteral).value
             it.remove()
