@@ -1,10 +1,12 @@
+/* eslint-disable no-use-before-define */
 import test from 'ava'
 import * as U from './index'
 import React from 'react'
-import Adapter from 'enzyme-adapter-react-16'
+import Adapter from '@wojtekmaj/enzyme-adapter-react-17'
 import * as jsdom from 'jsdom'
 import { types } from 'util'
 import { mount, configure } from 'enzyme'
+
 const { window } = new jsdom.JSDOM('<body></body>')
 Object.assign(global, {
   window,
@@ -12,7 +14,6 @@ Object.assign(global, {
   navigator: window.navigator
 })
 configure({ adapter: new (Adapter as any)() })
-console.log(2333)
 const { newInstance, Store, useStore } = U
 
 test('basic', async t => {

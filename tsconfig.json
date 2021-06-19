@@ -5,13 +5,12 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "module": "esnext",
+    "module": "commonjs",
     "moduleResolution": "node",
     "jsx": "react",
     "sourceMap": true,
     "declaration": true,
-    "outDir": "dist/esnext"
+    "outDir": "dist"
   },
   "files": [
     "index.ts",

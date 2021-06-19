@@ -1,4 +1,4 @@
-/* eslint-disable no-new-object, @typescript-eslint/no-use-before-define, prefer-rest-params */
+/* eslint-disable no-new-object, no-use-before-define, prefer-rest-params */
 import React, { createContext, useState, useContext, Context, createElement as c, Component, PureComponent } from 'react'
 
 declare module 'react' {
@@ -80,7 +80,8 @@ const handlers: ProxyHandler<any> = {
     /* istanbul ignore next */ else if (v == null) return v
     switch (typeof v) {
       case 'object': return v[NOT_PROXY] || v[PROXY]
-        ? v : (target[PROXY][p] = createProxy(v, target[ON_CHANGE], target[ROOT], target, p))
+        ? v
+        : (target[PROXY][p] = createProxy(v, target[ON_CHANGE], target[ROOT], target, p))
       case 'function': return target[BASE] ? (target[PROXY][p] = v.bind(target[BASE])) : v
       default: return v
     }
@@ -148,7 +149,7 @@ export const newInstance: (...stores: Array<Store | typeof Store>) => React.FC &
     if (typeof modifiedList[target[ROOT]] === 'undefined') modifiedList[target[ROOT]] = null
     if (!modified) {
       modified = true
-      new Promise(resolve => resolve()).then(patch)
+      new Promise<void>(resolve => resolve()).then(patch)
     }
   }
   _getStore = (store: any) => stores[ids.get(store)]
@@ -171,7 +172,12 @@ export const newInstance: (...stores: Array<Store | typeof Store>) => React.FC &
       /* istanbul ignore next */
       Reflect.ownKeys(store).forEach(k => store[k] && store[k][STORE] && (store[k] = gs(store[k][STORE])))
       /* istanbul ignore next */
-      Reflect.ownKeys(proto).forEach(k => proto[k] && proto[k][STORE] && (store[k] = gs(proto[k][STORE])))
+      Reflect.ownKeys(proto).forEach(k => {
+        if (proto[k]) {
+          if (proto[k][STORE]) store[k] = gs(proto[k][STORE])
+          if (proto[k] instanceof Store) store[k] = proto[k]
+        }
+      })
       store.getStore = gs
       ids.set(storeClass, stores.push(createProxy(store, change, stores.length)) - 1)
       contexts.push(createContext(null))
@@ -180,7 +186,7 @@ export const newInstance: (...stores: Array<Store | typeof Store>) => React.FC &
     if (update) update(!flag)
   }
   addStore.apply(null, arguments)
-  const ret: any = (props: React.PropsWithChildren<{}>) => {
+  const ret: any = (props: React.PropsWithChildren<any>) => {
     const v = useState(false)
     flag = v[0]
     update = v[1]
@@ -213,7 +219,7 @@ export const createOutsideStore = <T> (store: T, onChange?: () => void) => {
     updateList.add(target)
     if (hasModified) return
     hasModified = true
-    new Promise(resolve => resolve()).then(patch)
+    new Promise<void>(resolve => resolve()).then(patch)
   })
   ;(proxy as any).patch = patch
   return proxy as T & { patch (): void }
@@ -231,16 +237,16 @@ export const useOutsideStore = <T> (fn: () => T): T & { patch (): void } => {
 export class ComponentWithStore extends Component {
   public readonly [REACT_COMPONENT] = true
   public readonly patch: () => void
-  constructor (a: any, b: any) {
-    super(a, b)
+  constructor (a: any) {
+    super(a)
     return createOutsideStore(this, () => this.forceUpdate())
   }
 }
 export class PureComponentWithStore extends PureComponent {
   public readonly [REACT_COMPONENT] = true
   public readonly patch: () => void
-  constructor (a: any, b: any) {
-    super(a, b)
+  constructor (a: any) {
+    super(a)
     return createOutsideStore(this, () => this.forceUpdate())
   }
 }
